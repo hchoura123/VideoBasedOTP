@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>
+        AWS S3 File Upload
+    </title>
+</head>
+<body>
+<button id="start-camera">Start Camera</button>
+<video id="video" width="320" height="240" autoplay=""></video>
+<button id="start-record">Start Recording</button>
+<button id="stop-record">Stop Recording</button>
+<a id="download-video" download="test.webm">Download Video</a>
+
+<script async="" src="https://www.google-analytics.com/analytics.js"></script>
+<script>
+
+    let camera_button = document.querySelector("#start-camera");
+    let video = document.querySelector("#video");
+    let start_button = document.querySelector("#start-record");
+    let stop_button = document.querySelector("#stop-record");
+    let download_link = document.querySelector("#download-video");
+
+    let camera_stream = null;
+    let media_recorder = null;
+    let blobs_recorded = [];
+
+    camera_button.addEventListener('click', async function() {
+        try {
+            camera_stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        }
+        catch(error) {
+            alert(error.message);
+            return;
+        }
+
+        video.srcObject = camera_stream;
+        camera_button.style.display = 'none';
+        video.style.display = 'block';
+        start_button.style.display = 'block';
+    });
+
+    start_button.addEventListener('click', function() {
+        media_recorder = new MediaRecorder(camera_stream, { mimeType: 'video/webm' });
+
+        media_recorder.addEventListener('dataavailable', function(e) {
+            blobs_recorded.push(e.data);
+        });
+
+        media_recorder.addEventListener('stop', function() {
+            var file = new Blob(blobs_recorded, { type: 'video/webm' });
+            console.log('Starting Upload')
+            s3upload(file);
+            console.log('Done');
+            let video_local = URL.createObjectURL(file);
+            download_link.href = video_local;
+
+            stop_button.style.display = 'none';
+            download_link.style.display = 'block';
+        });
+
+        media_recorder.start(1000);
+
+        start_button.style.display = 'none';
+        stop_button.style.display = 'block';
+    });
+
+    stop_button.addEventListener('click', function() {
+        media_recorder.stop();
+    });
+
+</script>
+
+
+<div class="betternet-wrapper"></div>
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script type="text/javascript">
+    //Bucket Configurations
+    var bucketName = 'hchoura-testbucket';
+    var bucketRegion = 'us-east-1';
+    var IdentityPoolId = 'us-east-1:5eed18b3-7e2b-4b76-ad41-d435feb31755';
+
+    AWS.config.update({
+        region: bucketRegion,
+        credentials: new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: IdentityPoolId
+        })
+    });
+
+    var s3 = new AWS.S3({
+        apiVersion: '2006-03-01',
+        params: {Bucket: bucketName}
+    });
+</script>
+<script type="text/javascript">
+    function s3upload(files) {
+        // var files = document.getElementById('fileUpload').files;
+        if (files)
+        {
+            var file = files;
+            var fileName = "Pikachu.mp4";
+            var filePath =  fileName;
+            var fileUrl = 'https://' + bucketRegion + '.amazonaws.com/' +  filePath;
+            s3.upload({
+                Key: filePath,
+                Body: file,
+                ACL: 'public-read'
+            }, function(err, data) {
+                if(err) {
+                    reject('error');
+                }
+                alert('Successfully Uploaded!');
+            }).on('httpUploadProgress', function (progress) {
+                var uploaded = parseInt((progress.loaded * 100) / progress.total);
+                $("progress").attr('value', uploaded);
+            });
+        }
+    };
+</script>
+<!--<div>-->
+<!--    <input type="file" id="fileUpload">-->
+<!--</div>-->
+<!--<div>-->
+<!--    <button onclick="s3upload()">Submit</button>-->
+<!--</div>-->
+<!--<progress max=”100” value=”0”></progress>-->
+
+</body>
+</html>
