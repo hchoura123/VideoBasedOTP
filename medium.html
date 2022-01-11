@@ -11,7 +11,8 @@
 <button id="start-record">Start Recording</button>
 <button id="stop-record">Stop Recording</button>
 <a id="download-video" download="test.webm">Download Video</a>
-
+<button id="getObjectFroms3" onclick="s3getObject()">Get S3 Object</button>
+<p id="transcribe-output"></p>
 <script async="" src="https://www.google-analytics.com/analytics.js"></script>
 <script>
 
@@ -77,7 +78,7 @@
 <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 <script type="text/javascript">
     //Bucket Configurations
-    var bucketName = 'hchoura-testbucket';
+    var bucketName = 'inputbucketvid-347';
     var bucketRegion = 'us-east-1';
     var IdentityPoolId = 'us-east-1:5eed18b3-7e2b-4b76-ad41-d435feb31755';
 
@@ -99,7 +100,7 @@
         if (files)
         {
             var file = files;
-            var fileName = "Pikachu.mp4";
+            var fileName = "Pikachu.webm";
             var filePath =  fileName;
             var fileUrl = 'https://' + bucketRegion + '.amazonaws.com/' +  filePath;
             s3.upload({
@@ -117,6 +118,22 @@
             });
         }
     };
+</script>
+<script type="text/javascript">
+function s3getObject() {
+    s3.getObject(
+        { Bucket: "transcribe-result-otp", Key: "otpresult.json" },
+        function (err, data) {
+            if(err){
+                console.log('Error' + err);
+                s3getObject();
+            }
+            var s = document.getElementById('transcribe-output');
+            s.innerHTML = data.Body.toString('utf-8')
+            console.log(data.Body.toString('utf-8'))
+        }
+    )
+}
 </script>
 <!--<div>-->
 <!--    <input type="file" id="fileUpload">-->
